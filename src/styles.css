@@ -1,0 +1,18 @@
+body {
+  font-family: sans-serif;
+}
+
+p {
+  border: 1px solid #333;
+  display: inline-block;
+  margin-bottom: 1rem;
+  margin-right: 1rem;
+}
+
+.container {
+  display: flex;
+}
+
+.wrapper {
+  border-bottom: 1px solid #000;
+}
