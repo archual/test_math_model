@@ -16,3 +16,11 @@ p {
 .wrapper {
   border-bottom: 1px solid #000;
 }
+
+.scrollable {
+  overflow-y: scroll;
+}
+
+#clients {
+  height: 40vh;
+}
