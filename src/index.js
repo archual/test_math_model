@@ -47,6 +47,9 @@ class Contract {
 
   iterations = 100;
 
+  amountNumbers = 6;
+  fromNumbers = 46;
+
   constructor({ gasFee, ownerFee, osFee, prizeMainPart, prizeJackPot } = {}) {
     // if (arguments) {
     //   this.GAS_FEE = gasFee;
@@ -59,11 +62,11 @@ class Contract {
 
   generateTickets(amount) {
     for (let i = 0; i < amount; i++) {
-      // generate 6 numbers from 1 to 49 unique
+      // generate 6 numbers from 1 to fromNumbers unique
       // write them in string with -
       const numbers = [];
-      while (numbers.length !== 5) {
-        const number = Math.ceil(Math.random() * 49);
+      while (numbers.length !== this.amountNumbers - 1) {
+        const number = Math.ceil(Math.random() * this.fromNumbers);
         if (!numbers.includes(number)) numbers.push(number);
       }
       const ticketStr = numbers.join("-");
@@ -89,19 +92,51 @@ class Contract {
       // get all sold tickets
       // Generate 6 unique numbers from 1 to 49
       const winNumbers = [];
-      while (winNumbers.length !== 5) {
-        const number = Math.ceil(Math.random() * 49);
+      while (winNumbers.length !== this.amountNumbers - 1) {
+        const number = Math.ceil(Math.random() * this.fromNumbers);
         if (!winNumbers.includes(number)) winNumbers.push(number);
       }
+      const winners = {
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: []
+      };
+      this.soldTickets.forEach((ticket) => {
+        let matches = 0;
+        ticket.split("-").forEach((number) => {
+          if (winNumbers.includes(+number)) matches++;
+        });
+        if (matches) winners[matches].push(ticket);
+      });
       // Check every ticket, how much matches
+      console.log(
+        "В этом раунде было разыграно билетов: ",
+        this.soldTickets.length
+      );
+      console.log("Выпавшие номера: ", winNumbers.join(", "));
+      console.log("Выиграли 1 совпадение: ", winners[1]);
+      console.log("Выиграли 2 совпадение: ", winners[2]);
+      console.log("Выиграли 3 совпадение: ", winners[3]);
+      console.log("Выиграли 4 совпадение: ", winners[4]);
+      console.log("Выиграли 5 совпадение: ", winners[5]);
+      console.log("Выиграли 6 совпадение: ", winners[6]);
+      console.log("Выиграли all совпадение: ", winners);
+      console.log("Денег для розыгрыша: ", this.conWallet);
 
+      // перевести проданные билеты в раздел джекПота
+      // поделить текущий выйгрышь между билетами, то что не было разыграно - перевести на кошелек ДжекПота
+      // написат ьтакую же логику для жек пота
+      //TODO: вынести одинаковую логику в функции.
       // divide prizes before winners.
-      this.conTimer++;
-      if (this.conTimer > this.iterations) {
+      this.conTimerCount++;
+      if (this.conTimerCount > this.iterations) {
         clearInterval(this.conTimer);
         clearInterval(this.jpTimer);
       }
-    }, 1000 * 60);
+    }, 1000);
     return interval;
   }
 
