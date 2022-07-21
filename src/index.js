@@ -12,12 +12,14 @@ class Client {
   }
 
   buy(tickets) {
-    this.tickets = [...tickets];
+    this.tickets = [...this.tickets, ...tickets];
   }
 
   getPrize(winTicket, amount) {
-    this.ticket = this.ticket.filter((ticket) => ticket !== winTicket);
+    console.log("Balans before: ", this.wallet);
     this.wallet += amount;
+    console.log("Client: ", this.id, " get prize: ", amount);
+    console.log("Balans after: ", this.wallet);
   }
 }
 
@@ -32,6 +34,8 @@ class Contract {
 
   tickets = [];
   soldTickets = [];
+  jpTickets = [];
+  winTickets = [];
   conTimer;
   conTimerCount = 0;
   jpTimer;
@@ -47,10 +51,16 @@ class Contract {
 
   iterations = 100;
 
-  amountNumbers = 6;
-  fromNumbers = 46;
+  amountNumbers = 5;
+  fromNumbers = 30;
 
-  constructor({ gasFee, ownerFee, osFee, prizeMainPart, prizeJackPot } = {}) {
+  sendWins;
+
+  constructor(
+    sendWins,
+    { gasFee, ownerFee, osFee, prizeMainPart, prizeJackPot } = {}
+  ) {
+    this.sendWins = sendWins;
     // if (arguments) {
     //   this.GAS_FEE = gasFee;
     //   this.OWNER_FEE = ownerFee;
@@ -101,9 +111,10 @@ class Contract {
         2: [],
         3: [],
         4: [],
-        5: [],
-        6: []
+        5: []
       };
+
+      // Check every ticket, how much matches
       this.soldTickets.forEach((ticket) => {
         let matches = 0;
         ticket.split("-").forEach((number) => {
@@ -111,7 +122,33 @@ class Contract {
         });
         if (matches) winners[matches].push(ticket);
       });
-      // Check every ticket, how much matches
+
+      // поделить текущий выйгрышь между билетами, то что не было разыграно - перевести на кошелек ДжекПота
+      const winSums = {
+        1: 0,
+        2: this.conWallet * 0.1,
+        3: this.conWallet * 0.2,
+        4: this.conWallet * 0.3,
+        5: this.conWallet * 0.4
+      };
+
+      console.log(winSums);
+
+      const prizes = [];
+
+      Object.values(winners).forEach((currentWinners, index) => {
+        if (index === 0) return;
+        if (!currentWinners.length) {
+          this.jpWallet += winSums[index + 1];
+        }
+        const winSum = winSums[index + 1] / currentWinners.length;
+        currentWinners.forEach((winner) => prizes.push({ winner, winSum }));
+      });
+      console.log(prizes);
+
+      // написать такую же логику для жек пота
+      //TODO: вынести одинаковую логику в функции.
+      // divide prizes before winners.
       console.log(
         "В этом раунде было разыграно билетов: ",
         this.soldTickets.length
@@ -122,21 +159,22 @@ class Contract {
       console.log("Выиграли 3 совпадение: ", winners[3]);
       console.log("Выиграли 4 совпадение: ", winners[4]);
       console.log("Выиграли 5 совпадение: ", winners[5]);
-      console.log("Выиграли 6 совпадение: ", winners[6]);
-      console.log("Выиграли all совпадение: ", winners);
       console.log("Денег для розыгрыша: ", this.conWallet);
+      this.conWallet = 0;
 
       // перевести проданные билеты в раздел джекПота
-      // поделить текущий выйгрышь между билетами, то что не было разыграно - перевести на кошелек ДжекПота
-      // написат ьтакую же логику для жек пота
-      //TODO: вынести одинаковую логику в функции.
-      // divide prizes before winners.
+      this.jpTickets = [...this.jpTickets, ...this.soldTickets];
+      this.soldTickets = [];
+      if (prizes.length) {
+        this.sendWins(prizes);
+      }
+
       this.conTimerCount++;
       if (this.conTimerCount > this.iterations) {
         clearInterval(this.conTimer);
         clearInterval(this.jpTimer);
       }
-    }, 1000);
+    }, 1000 * 5);
     return interval;
   }
 
@@ -144,7 +182,7 @@ class Contract {
     const interval = setInterval(() => {
       // Prize logic
       console.log("Jack Pot");
-    }, 1000 * 60 * 5);
+    }, 1000 * 60);
     return interval;
   }
 
@@ -164,8 +202,7 @@ class Contract {
     this.feesWallets.owner += owner;
     this.feesWallets.os += os;
 
-    this.conWallet += (amount * this.price - (gas + owner + os)) * 0.9;
-    this.jpWallet += (amount * this.price - (gas + owner + os)) * 0.1;
+    this.conWallet += amount * this.price - (gas + owner + os);
   }
 
   getTicketsAmount() {
@@ -184,7 +221,7 @@ class TestSystem {
   iterations = 100;
 
   constructor() {
-    this.Contract = new Contract();
+    this.Contract = new Contract(this.sendWins.bind(this));
     for (let i = 0; i < 1000; i++) {
       this.clients.push(new Client());
     }
@@ -237,6 +274,25 @@ class TestSystem {
       }
     }, 100);
     return interval;
+  }
+
+  sendWins(prizes) {
+    // find client, find ticket and send amount.
+    const clientTickets = {};
+    this.clients.forEach((client) => {
+      client.tickets.forEach((ticket) => (clientTickets[ticket] = client));
+    });
+    prizes.forEach((prize) => {
+      if (!clientTickets[prize.winner]) {
+        console.log("!!!!Cant find client for ticket: ", prize.winner);
+        console.log(prize);
+        console.log(clientTickets);
+        console.log(this.clients);
+        this.stop();
+        return;
+      }
+      clientTickets[prize.winner].getPrize(prize.winner, prize.winSum);
+    });
   }
 
   startlog() {
