@@ -150,12 +150,12 @@ class Contract {
       console.log("Денег для розыгрыша: ", this.conWallet);
       this.conWallet = 0;
 
-      Object.values(winners).forEach((currentWinners, index) => {
-        if (!currentWinners.length) {
-          this.jpWallet += winSums[index + 1];
+      Object.keys(winners).forEach((matches) => {
+        if (!winners[matches].length) {
+          this.jpWallet += winSums[matches];
         }
-        const winSum = winSums[index + 1] / currentWinners.length;
-        currentWinners.forEach((winner) => prizes.push({ winner, winSum }));
+        const winSum = winSums[matches] / winners[matches].length;
+        winners[matches].forEach((winner) => prizes.push({ winner, winSum }));
       });
       // console.log(prizes);
 
