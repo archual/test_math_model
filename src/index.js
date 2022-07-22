@@ -16,17 +16,17 @@ class Client {
   }
 
   getPrize(winTicket, amount) {
-    console.log("Balans before: ", this.wallet);
+    // console.log("Balans before: ", this.wallet);
     this.wallet += amount;
-    console.log("Client: ", this.id, " get prize: ", amount);
-    console.log("Balans after: ", this.wallet);
+    // console.log("Client: ", this.id, " get prize: ", amount);
+    // console.log("Balans after: ", this.wallet);
   }
 }
 
 class Contract {
   price = 10;
   GAS_FEE = 0.01;
-  OWNER_FEE = 0.02;
+  OWNER_FEE = 0.05;
   OS_FEE = 0.02;
 
   prizeMainPart = 0.9;
@@ -49,10 +49,10 @@ class Contract {
   conWallet = 100;
   jpWallet = 0;
 
-  iterations = 100;
+  iterations = 1000;
 
   amountNumbers = 5;
-  fromNumbers = 30;
+  fromNumbers = 11;
 
   sendWins;
 
@@ -94,6 +94,35 @@ class Contract {
     clearInterval(this.jpTimer);
   }
 
+  generateWinNumbers() {
+    const winNumbers = [];
+    while (winNumbers.length !== this.amountNumbers - 1) {
+      const number = Math.ceil(Math.random() * this.fromNumbers);
+      if (!winNumbers.includes(number)) winNumbers.push(number);
+    }
+    return winNumbers;
+  }
+
+  getWinners(winNumbers, tickets) {
+    const winners = {
+      3: [],
+      4: [],
+      5: []
+    };
+    if (!tickets.length) return winners;
+
+    // Check every ticket, how much matches
+    tickets.forEach((ticket) => {
+      let matches = 0;
+      ticket.split("-").forEach((number) => {
+        if (winNumbers.includes(+number)) matches++;
+      });
+      if (matches > 2) winners[matches].push(ticket);
+    });
+
+    return winners;
+  }
+
   startCon() {
     const interval = setInterval(() => {
       // Prize logic
@@ -101,66 +130,66 @@ class Contract {
 
       // get all sold tickets
       // Generate 6 unique numbers from 1 to 49
-      const winNumbers = [];
-      while (winNumbers.length !== this.amountNumbers - 1) {
-        const number = Math.ceil(Math.random() * this.fromNumbers);
-        if (!winNumbers.includes(number)) winNumbers.push(number);
-      }
-      const winners = {
-        1: [],
-        2: [],
-        3: [],
-        4: [],
-        5: []
-      };
+      const winNumbers = this.generateWinNumbers();
 
-      // Check every ticket, how much matches
-      this.soldTickets.forEach((ticket) => {
-        let matches = 0;
-        ticket.split("-").forEach((number) => {
-          if (winNumbers.includes(+number)) matches++;
-        });
-        if (matches) winners[matches].push(ticket);
-      });
+      const winners = this.getWinners(winNumbers, this.soldTickets);
 
       // поделить текущий выйгрышь между билетами, то что не было разыграно - перевести на кошелек ДжекПота
       const winSums = {
         1: 0,
-        2: this.conWallet * 0.1,
-        3: this.conWallet * 0.2,
-        4: this.conWallet * 0.3,
+        2: 0,
+        3: this.conWallet * 0.25,
+        4: this.conWallet * 0.35,
         5: this.conWallet * 0.4
       };
 
-      console.log(winSums);
+      // console.log(winSums);
 
       const prizes = [];
 
+      console.log("Денег для розыгрыша: ", this.conWallet);
+      this.conWallet = 0;
+
       Object.values(winners).forEach((currentWinners, index) => {
-        if (index === 0) return;
         if (!currentWinners.length) {
           this.jpWallet += winSums[index + 1];
         }
         const winSum = winSums[index + 1] / currentWinners.length;
         currentWinners.forEach((winner) => prizes.push({ winner, winSum }));
       });
-      console.log(prizes);
+      // console.log(prizes);
 
-      // написать такую же логику для жек пота
-      //TODO: вынести одинаковую логику в функции.
       // divide prizes before winners.
       console.log(
         "В этом раунде было разыграно билетов: ",
         this.soldTickets.length
       );
-      console.log("Выпавшие номера: ", winNumbers.join(", "));
-      console.log("Выиграли 1 совпадение: ", winners[1]);
-      console.log("Выиграли 2 совпадение: ", winners[2]);
-      console.log("Выиграли 3 совпадение: ", winners[3]);
-      console.log("Выиграли 4 совпадение: ", winners[4]);
-      console.log("Выиграли 5 совпадение: ", winners[5]);
-      console.log("Денег для розыгрыша: ", this.conWallet);
-      this.conWallet = 0;
+      // console.log("Выпавшие номера: ", winNumbers.join(", "));
+      // console.log("Выиграли 1 совпадение: ", winners[1]);
+      // console.log(
+      //   "Выиграли 2 совпадение: ",
+      //   winners[2].length,
+      //   " sum: ",
+      //   winSums[2]
+      // );
+      console.log(
+        "Выиграли 3 совпадение: ",
+        winners[3].length,
+        " sum: ",
+        winSums[3] / winners[3].length
+      );
+      console.log(
+        "Выиграли 4 совпадение: ",
+        winners[4].length,
+        " sum: ",
+        winSums[4] / winners[4].length
+      );
+      console.log(
+        "Выиграли 5 совпадение: ",
+        winners[5].length,
+        " sum: ",
+        winSums[5] / winners[5].length
+      );
 
       // перевести проданные билеты в раздел джекПота
       this.jpTickets = [...this.jpTickets, ...this.soldTickets];
@@ -174,15 +203,43 @@ class Contract {
         clearInterval(this.conTimer);
         clearInterval(this.jpTimer);
       }
-    }, 1000 * 5);
+    }, 1000);
     return interval;
   }
 
   startJP() {
     const interval = setInterval(() => {
       // Prize logic
+      const winNumbers = this.generateWinNumbers();
+
+      const winners = this.getWinners(winNumbers, this.jpTickets);
+      if (!winners[5].length) {
+        console.log("JP is not win");
+        return;
+      }
+
+      const prizes = [];
+      const winSum = this.jpWallet / winners[5].length;
+
+      winners[5].forEach((winner) => {
+        prizes.push({ winner, winSum });
+      });
+
+      if (prizes.length) {
+        this.sendWins(prizes);
+      }
+
+      this.jpTickets = this.jpTickets.filter((ticket) =>
+        winners[5].includes(ticket)
+      );
+
+      console.log("Jack pot was won by: ", winners[5].join(", "));
+      console.log("Prize is: ", winSum);
+      this.jpWallet = 0;
+
       console.log("Jack Pot");
-    }, 1000 * 60);
+      this.jpTimerCount++;
+    }, 1000 * 10);
     return interval;
   }
 
@@ -203,6 +260,7 @@ class Contract {
     this.feesWallets.os += os;
 
     this.conWallet += amount * this.price - (gas + owner + os);
+    if (this.tickets < 10) this.generateTickets(9990);
   }
 
   getTicketsAmount() {
@@ -218,7 +276,7 @@ class TestSystem {
   clients = [];
   logTimer;
   logTimerCount = 0;
-  iterations = 100;
+  iterations = 1000;
 
   constructor() {
     this.Contract = new Contract(this.sendWins.bind(this));
@@ -269,10 +327,10 @@ class TestSystem {
         this.Contract.sell(currentClient, amount);
       }
       this.buyTimerCount++;
-      if (this.buyTimerCount > this.iterations * 10) {
+      if (this.buyTimerCount > this.iterations * 100) {
         clearInterval(this.buyTimer);
       }
-    }, 100);
+    }, 10);
     return interval;
   }
 
@@ -322,6 +380,8 @@ class TestSystem {
     // document.getElementById("clients").innerHTML = this.Contract.tickets
     //   .map((ticket) => `<p>${ticket}</p`)
     //   .join("");
+    document.getElementById("con").innerHTML = this.Contract.conTimerCount;
+    document.getElementById("jp").innerHTML = this.Contract.jpTimerCount;
   }
 }
 
